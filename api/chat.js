@@ -1,29 +1,36 @@
-export const runtime = 'edge';
-
-export default async (req, context) => {
+// Vercel Node.js Function
+export default async function handler(req, res) {
   // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return res.status(204).end();
   }
+
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const apiKey = process.env.LLM_API_KEY;
-  const baseUrl = process.env.LLM_BASE_URL || 'https://openrouter.ai/api/v1';
-  const model = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
+  const baseUrl = process.env.LLM_BASE_URL || 'https://api.groq.com/openai/v1';
+  const model = process.env.LLM_MODEL || 'llama-3.3-70b-versatile';
 
   if (!apiKey) {
-    return jsonResponse({ error: 'LLM_API_KEY non configurée sur Netlify' }, 500);
+    return res.status(500).json({ error: 'LLM_API_KEY non configurée' });
   }
 
   let body;
-  try { body = await req.json(); }
-  catch { return jsonResponse({ error: 'JSON invalide' }, 400); }
+  try {
+    body = req.body;
+  } catch {
+    return res.status(400).json({ error: 'JSON invalide' });
+  }
 
   const { system, messages } = body;
   if (!Array.isArray(messages)) {
-    return jsonResponse({ error: 'messages doit être un tableau' }, 400);
+    return res.status(400).json({ error: 'messages doit être un tableau' });
   }
 
   const payload = {
@@ -41,44 +48,35 @@ export default async (req, context) => {
     const upstream = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': process.env.URL || 'https://ined-buddy.netlify.app',
-        'X-Title': 'INED Buddy'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
     if (!upstream.ok) {
       const errText = await upstream.text();
-      return jsonResponse({ error: 'Erreur API', details: errText }, upstream.status);
+      return res.status(upstream.status).json({ error: `Groq error: ${errText}` });
     }
 
-    // Streaming SSE : on retransmet tel quel au client
-    return new Response(upstream.body, {
-      headers: {
-        ...corsHeaders(),
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
-    });
+    // Stream la réponse de Groq directement au client
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-  } catch (e) {
-    return jsonResponse({ error: e.message }, 500);
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      res.write(chunk);
+    }
+
+    res.end();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    res.status(500).json({ error: 'Erreur serveur: ' + error.message });
   }
-};
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  };
-}
-function jsonResponse(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { ...corsHeaders(), 'Content-Type': 'application/json' }
-  });
 }
