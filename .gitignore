@@ -1,15 +1,16 @@
-# Local Netlify folder
+# Netlify
 .netlify
-
-# Netlify dev local files
 blobs-serve/
 db/
 functions-internal/
 v1/
 state.json
 
-# Fichier de configuration sensible (clé API)
+# Vercel
+.vercel
+
+# Sensible
 .env
 
-# Node modules
+# Node
 node_modules/
