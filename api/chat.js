@@ -1,5 +1,4 @@
-// Netlify Function — proxy vers un modèle OpenAI-compatible
-// Supporte : OpenAI, OpenRouter, Groq, DeepSeek, Together, etc.
+export const runtime = 'edge';
 
 export default async (req, context) => {
   // CORS
