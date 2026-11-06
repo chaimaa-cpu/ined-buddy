@@ -1,6 +1,13 @@
 # Local Netlify folder
 .netlify
 
+# Netlify dev local files
+blobs-serve/
+db/
+functions-internal/
+v1/
+state.json
+
 # Fichier de configuration sensible (clé API)
 .env
 
