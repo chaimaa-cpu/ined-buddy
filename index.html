@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>INED Buddy — Assistant Universitaire Intelligent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Markdown + Code highlighting -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel-2:#1c2030; --border:#262b3a;
+    --text:#e6e8ee; --muted:#8b90a0; --accent:#10a37f; --accent-2:#0d8a6b;
+    --user:#2a2f3e; --danger:#ef4444;
+  }
+  [data-theme="light"]{
+    --bg:#f7f7f8; --panel:#ffffff; --panel-2:#f1f1f3; --border:#e5e5ea;
+    --text:#1a1a1a; --muted:#6b7280; --accent:#10a37f; --accent-2:#0d8a6b;
+    --user:#ececec; --danger:#dc2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  .app{display:flex;height:100vh}
+
+  /* Sidebar */
+  .sidebar{width:260px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:margin .25s}
+  .sidebar.hidden{margin-left:-260px}
+  .sb-header{padding:14px;border-bottom:1px solid var(--border);display:flex;gap:8px}
+  .btn-new{flex:1;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-weight:500;display:flex;align-items:center;gap:8px;justify-content:center;transition:.15s}
+  .btn-new:hover{background:var(--border)}
+  .sb-list{flex:1;overflow-y:auto;padding:8px}
+  .sb-list::-webkit-scrollbar{width:6px}
+  .sb-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .conv-item{padding:10px 12px;border-radius:8px;color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:2px;position:relative;transition:.15s}
+  .conv-item:hover{background:var(--panel-2);color:var(--text)}
+  .conv-item.active{background:var(--panel-2);color:var(--text)}
+  .conv-item .title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-item .del{opacity:0;color:var(--muted);font-size:16px;padding:2px 6px;border-radius:4px}
+  .conv-item:hover .del{opacity:1}
+  .conv-item .del:hover{color:var(--danger);background:rgba(239,68,68,.1)}
+  .sb-footer{padding:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:space-between}
+  .theme-toggle{padding:6px 10px;border-radius:6px;background:var(--panel-2);border:1px solid var(--border);font-size:12px}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--panel)}
+  .topbar h1{font-size:15px;font-weight:600;flex:1}
+  .icon-btn{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s}
+  .icon-btn:hover{background:var(--panel-2);color:var(--text)}
+
+  /* Chat */
+  .chat{flex:1;overflow-y:auto;padding:24px 0}
+  .chat::-webkit-scrollbar{width:8px}
+  .chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .chat-inner{max-width:780px;margin:0 auto;padding:0 20px}
+
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:16px}
+  .welcome .logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent),#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:30px}
+  .welcome h2{font-size:24px;font-weight:600}
+  .welcome p{color:var(--muted);max-width:520px;line-height:1.6}
+  .suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:20px;width:100%;max-width:640px}
+  .sugg{padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:.15s}
+  .sugg:hover{border-color:var(--accent);background:var(--panel-2)}
+  .sugg .t{font-size:13px;font-weight:600;margin-bottom:4px}
+  .sugg .d{font-size:12px;color:var(--muted)}
+
+  /* Messages */
+  .msg{display:flex;gap:14px;padding:18px 0;animation:fade .25s}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .avatar{width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+  .msg.user .avatar{background:var(--user);color:var(--text)}
+  .msg.assistant .avatar{background:linear-gradient(135deg,var(--accent),#0ea5e9);color:white}
+  .bubble{flex:1;min-width:0;line-height:1.7;font-size:15px}
+  .bubble p{margin:0 0 10px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble ul,.bubble ol{margin:8px 0 10px 22px}
+  .bubble li{margin:4px 0}
+  .bubble h1,.bubble h2,.bubble h3{margin:14px 0 8px;font-weight:600}
+  .bubble h1{font-size:20px} .bubble h2{font-size:18px} .bubble h3{font-size:16px}
+  .bubble strong{font-weight:600}
+  .bubble code{background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:13px;font-family:'Fira Code',monospace}
+  .bubble pre{background:#0d1117;border-radius:10px;margin:10px 0;overflow:hidden;position:relative}
+  .bubble pre code{background:none;padding:14px;display:block;overflow-x:auto;font-size:13px;line-height:1.5}
+  .code-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#161b22;border-bottom:1px solid #262b3a;font-size:12px;color:#8b90a0}
+  .copy-btn{padding:4px 10px;border-radius:6px;background:#262b3a;color:#e6e8ee;font-size:12px;transition:.15s}
+  .copy-btn:hover{background:#3a4154}
+  .bubble table{border-collapse:collapse;margin:10px 0;width:100%;font-size:14px}
+  .bubble th,.bubble td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+  .bubble th{background:var(--panel-2);font-weight:600}
+  .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);margin:10px 0}
+
+  .msg-actions{display:flex;gap:4px;margin-top:8px;opacity:0;transition:.15s}
+  .msg:hover .msg-actions{opacity:1}
+  .msg-actions button{padding:4px 8px;border-radius:6px;font-size:12px;color:var(--muted)}
+  .msg-actions button:hover{background:var(--panel-2);color:var(--text)}
+
+  .typing{display:inline-flex;gap:4px;padding:4px 0}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+  /* Input */
+  .input-wrap{padding:16px 20px 20px;background:var(--bg)}
+  .input-box{max-width:780px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:10px 12px;display:flex;align-items:flex-end;gap:8px;transition:.15s}
+  .input-box:focus-within{border-color:var(--accent)}
+  .input-box textarea{flex:1;background:none;border:none;color:var(--text);font-size:15px;font-family:inherit;resize:none;outline:none;max-height:200px;line-height:1.5;padding:8px 4px}
+  .send-btn{width:36px;height:36px;border-radius:10px;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+  .send-btn:hover{background:var(--accent-2)}
+  .send-btn:disabled{background:var(--panel-2);color:var(--muted);cursor:not-allowed}
+  .stop-btn{background:var(--danger)}
+  .stop-btn:hover{background:#dc2626}
+  .hint{text-align:center;font-size:11px;color:var(--muted);margin-top:8px}
+
+  @media(max-width:768px){
+    .sidebar{position:absolute;height:100%;z-index:10}
+    .sidebar.hidden{margin-left:-260px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-header">
+      <button class="btn-new" id="newChatBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Nouvelle conversation
+      </button>
+    </div>
+    <div class="sb-list" id="convList"></div>
+    <div class="sb-footer">
+      <span>INED Buddy v1.0</span>
+      <button class="theme-toggle" id="themeBtn">🌙 Sombre</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <button class="icon-btn" id="toggleSidebar" title="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <h1 id="chatTitle">INED Buddy</h1>
+      <button class="icon-btn" id="renameBtn" title="Renommer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+    </div>
+
+    <div class="chat" id="chat">
+      <div class="chat-inner" id="chatInner">
+        <!-- welcome or messages -->
+      </div>
+    </div>
+
+    <div class="input-wrap">
+      <div class="input-box">
+        <textarea id="input" placeholder="Écris ton message à INED Buddy..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" title="Envoyer">
+          <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+      <div class="hint">INED Buddy peut faire des erreurs. Vérifie les informations importantes.</div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   INED Buddy — ChatGPT-like client
+   ============================================================ */
+
+const SYSTEM_PROMPT = `Tu es INED Buddy, l'assistant universitaire intelligent du département INED (Innovation et Entrepreneuriat Digital), spécialisé pour accompagner les étudiants de 1ère année en Management Digital des Organisations (MDO 1).
+
+RÈGLES STRICTES :
+- Tu réponds TOUJOURS en français, quelle que soit la langue de la question.
+- Tu es pédagogue, clair, bienveillant et structuré.
+- Tu utilises le Markdown quand c'est utile : titres, listes, tableaux, gras, code.
+- Quand tu donnes du code, tu précises le langage (ex: \`\`\`python).
+- Tu peux répondre sur TOUT : cours MDO (comptabilité, économie, management, IA, tech), culture générale, programmation, méthodes de travail, conseils étudiants, etc.
+- Tu donnes des exemples concrets, des analogies simples, et tu proposes des plans d'étude quand c'est pertinent.
+- Tu restes concis mais complet. Tu évites le blabla inutile.
+- Tu ne prétends pas avoir accès à internet ni à des données personnelles.`;
+
+const STORAGE_KEY = 'ined_buddy_conversations_v1';
+const THEME_KEY = 'ined_buddy_theme';
+
+let conversations = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let currentId = null;
+let abortController = null;
+let isStreaming = false;
+
+/* ---------- Utils ---------- */
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+
+function getConv(id){ return conversations.find(c => c.id === id); }
+function currentConv(){ return currentId ? getConv(currentId) : null; }
+
+/* ---------- Theme ---------- */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  $('themeBtn').textContent = t === 'light' ? '☀️ Clair' : '🌙 Sombre';
+  localStorage.setItem(THEME_KEY, t);
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+$('themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'light' ? 'dark' : 'light');
+};
+
+/* ---------- Sidebar ---------- */
+function renderSidebar(){
+  const list = $('convList');
+  list.innerHTML = '';
+  conversations.slice().sort((a,b)=>b.updated-a.updated).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'conv-item' + (c.id === currentId ? ' active' : '');
+    el.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="title">${escapeHtml(c.title)}</span>
+      <button class="del" title="Supprimer">×</button>`;
+    el.onclick = (e) => {
+      if(e.target.classList.contains('del')){
+        e.stopPropagation();
+        if(confirm('Supprimer cette conversation ?')){
+          conversations = conversations.filter(x => x.id !== c.id);
+          if(currentId === c.id){ currentId = null; render(); }
+          else renderSidebar();
+          save();
+        }
+        return;
+      }
+      currentId = c.id;
+      render();
+    };
+    list.appendChild(el);
+  });
+}
+
+$('toggleSidebar').onclick = () => $('sidebar').classList.toggle('hidden');
+$('newChatBtn').onclick = () => { currentId = null; render(); };
+$('renameBtn').onclick = () => {
+  const c = currentConv();
+  if(!c) return;
+  const t = prompt('Nouveau titre :', c.title);
+  if(t && t.trim()){ c.title = t.trim(); save(); renderSidebar(); $('chatTitle').textContent = c.title; }
+};
+
+/* ---------- Render ---------- */
+function render(){
+  renderSidebar();
+  const inner = $('chatInner');
+  inner.innerHTML = '';
+  const c = currentConv();
+  if(!c){
+    $('chatTitle').textContent = 'INED Buddy';
+    inner.innerHTML = `
+      <div class="welcome">
+        <div class="logo">🎓</div>
+        <h2>Bonjour et bienvenue à l'INED !</h2>
+        <p>Je suis INED Buddy, ton assistant universitaire intelligent. Je t'accompagne dans tes cours MDO 1, tes révisions et ta réussite académique.</p>
+        <div class="suggestions">
+          <div class="sugg" data-q="Présente-moi la filière MDO"><div class="t">📘 Présente-moi la filière MDO</div><div class="d">Objectifs, débouchés, département INED</div></div>
+          <div class="sugg" data-q="Quels sont les modules du semestre 1 et 2 ?"><div class="t">📚 Modules S1 & S2</div><div class="d">Programme pédagogique complet</div></div>
+          <div class="sugg" data-q="Comment bien réussir ma première année à l'INED ?"><div class="t">🎯 Réussir ma première année</div><div class="d">Conseils d'intégration et méthode</div></div>
+          <div class="sugg" data-q="Explique-moi la différence entre comptabilité financière et comptabilité analytique"><div class="t">💡 Une explication claire</div><div class="d">Comptabilité : financière vs analytique</div></div>
+        </div>
+      </div>`;
+    inner.querySelectorAll('.sugg').forEach(s => {
+      s.onclick = () => { $('input').value = s.dataset.q; sendMessage(); };
+    });
+    return;
+  }
+  $('chatTitle').textContent = c.title;
+  c.messages.forEach(m => appendMessage(m.role, m.content, false));
+  scrollBottom();
+}
+
+function appendMessage(role, content, animate=true){
+  const inner = $('chatInner');
+  // remove welcome if present
+  const w = inner.querySelector('.welcome'); if(w) w.remove();
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '🧑' : '🎓'}</div>
+    <div style="flex:1;min-width:0">
+      <div class="bubble"></div>
+      ${role === 'assistant' ? `<div class="msg-actions">
+        <button data-act="copy">📋 Copier</button>
+        <button data-act="regen">🔄 Régénérer</button>
+      </div>` : ''}
+    </div>`;
+  const bubble = div.querySelector('.bubble');
+  if(role === 'assistant' && !content){
+    bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  } else {
+    bubble.innerHTML = renderMarkdown(content);
+  }
+  // actions
+  div.querySelectorAll('.msg-actions button').forEach(b => {
+    b.onclick = () => {
+      if(b.dataset.act === 'copy'){
+        navigator.clipboard.writeText(content);
+        b.textContent = '✓ Copié';
+        setTimeout(()=>b.textContent='📋 Copier', 1500);
+      } else if(b.dataset.act === 'regen'){
+        regenerate();
+      }
+    };
+  });
+  inner.appendChild(div);
+  if(animate) scrollBottom();
+  return bubble;
+}
+
+function scrollBottom(){
+  const c = $('chat');
+  c.scrollTop = c.scrollHeight;
+}
+
+/* ---------- Markdown ---------- */
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  highlight: (code, lang) => {
+    if(lang && hljs.getLanguage(lang)){
+      try { return hljs.highlight(code, {language: lang}).value; } catch(e){}
+    }
+    return hljs.highlightAuto(code).value;
+  }
+});
+
+function renderMarkdown(text){
+  if(!text) return '';
+  let html = marked.parse(text);
+  // wrap code blocks with header + copy button
+  html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, (m, lang, code) => {
+    return `<pre><div class="code-head"><span>${lang}</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div><code class="language-${lang}">${code}</code></pre>`;
+  });
+  html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (m, code) => {
+    return `<pre><div class="code-head"><span>code</span><button class="copy-btn" onclick="copyCode(this)">Copier</button></div><code>${code}</code></pre>`;
+  });
+  return html;
+}
+window.copyCode = function(btn){
+  const code = btn.closest('pre').querySelector('code').innerText;
+  navigator.clipboard.writeText(code);
+  btn.textContent = '✓ Copié';
+  setTimeout(()=>btn.textContent='Copier', 1500);
+};
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Send / Stream ---------- */
+async function sendMessage(){
+  const input = $('input');
+  const text = input.value.trim();
+  if(!text || isStreaming) return;
+
+  // create conversation if needed
+  if(!currentId){
+    const c = { id: uid(), title: 'Nouvelle conversation', messages: [], updated: Date.now() };
+    conversations.push(c);
+    currentId = c.id;
+    renderSidebar();
+  }
+  const c = currentConv();
+  c.messages.push({ role: 'user', content: text });
+  c.updated = Date.now();
+  save();
+
+  input.value = '';
+  input.style.height = 'auto';
+  appendMessage('user', text);
+  const bubble = appendMessage('assistant', '');
+
+  await streamResponse(c, bubble);
+}
+
+async function regenerate(){
+  const c = currentConv();
+  if(!c || c.messages.length < 2 || isStreaming) return;
+  // remove last assistant
+  if(c.messages[c.messages.length-1].role === 'assistant') c.messages.pop();
+  save();
+  // remove last assistant DOM
+  const msgs = document.querySelectorAll('.msg.assistant');
+  if(msgs.length) msgs[msgs.length-1].remove();
+  const bubble = appendMessage('assistant', '');
+  await streamResponse(c, bubble);
+}
+
+async function streamResponse(conv, bubble){
+  isStreaming = true;
+  setStreamingUI(true);
+  abortController = new AbortController();
+
+  let full = '';
+  try{
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system: SYSTEM_PROMPT,
+        messages: conv.messages
+      }),
+      signal: abortController.signal
+    });
+
+    if(!res.ok || !res.body){
+      const err = await res.text();
+      throw new Error('Erreur serveur : ' + (err || res.status));
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, {stream:true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if(data === '[DONE]') continue;
+        try{
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if(delta){
+            full += delta;
+            bubble.innerHTML = renderMarkdown(full);
+            scrollBottom();
+          }
+        }catch(e){}
+      }
+    }
+
+    // finalize
+    conv.messages.push({ role: 'assistant', content: full });
+    conv.updated = Date.now();
+    // auto-rename on first exchange
+    if(conv.messages.length <= 2){
+      conv.title = autoTitle(conv.messages[0].content);
+      renderSidebar();
+      $('chatTitle').textContent = conv.title;
+    }
+    save();
+
+  }catch(e){
+    if(e.name === 'AbortError'){
+      if(full){
+        conv.messages.push({ role: 'assistant', content: full + '\n\n_(réponse interrompue)_' });
+        save();
+      }
+    } else {
+      bubble.innerHTML = `<div style="color:var(--danger)">⚠️ ${escapeHtml(e.message)}</div>`;
+    }
+  } finally {
+    isStreaming = false;
+    abortController = null;
+    setStreamingUI(false);
+  }
+}
+
+function setStreamingUI(on){
+  const btn = $('sendBtn');
+  const icon = $('sendIcon');
+  if(on){
+    btn.classList.add('stop-btn');
+    btn.title = 'Arrêter';
+    icon.outerHTML = `<svg id="sendIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+    btn.onclick = () => abortController?.abort();
+  } else {
+    btn.classList.remove('stop-btn');
+    btn.title = 'Envoyer';
+    const stop = btn.querySelector('svg');
+    stop.outerHTML = `<svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
+    btn.onclick = sendMessage;
+  }
+}
+
+function autoTitle(firstMsg){
+  const t = firstMsg.trim().replace(/\s+/g,' ');
+  return t.length > 40 ? t.slice(0,40) + '…' : t;
+}
+
+/* ---------- Input handling ---------- */
+const input = $('input');
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+});
+input.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+$('sendBtn').onclick = sendMessage;
+
+/* ---------- Init ---------- */
+render();
+</script>
+</body>
+</html>

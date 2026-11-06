@@ -1,0 +1,8 @@
+# Local Netlify folder
+.netlify
+
+# Fichier de configuration sensible (clé API)
+.env
+
+# Node modules
+node_modules/
