@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>INED Buddy v1.2</title>
+<title>INED Buddy v1.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -148,15 +148,15 @@
   <div class="overlay" id="overlay"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sb-header">
-      <button class="btn-new" id="newChatBtn">
+      <button class="btn-new" id="newChatBtn" onclick="startNewChat()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         Nouvelle conversation
       </button>
     </div>
     <div class="sb-list" id="convList"></div>
     <div class="sb-footer">
-      <span>INED Buddy v1.0</span>
-      <button class="theme-toggle" id="themeBtn"> Sombre</button>
+      <span>INED Buddy v1.3</span>
+      <button class="theme-toggle" id="themeBtn">🌙 Sombre</button>
     </div>
   </aside>
   <main class="main">
@@ -175,7 +175,7 @@
     <div class="input-wrap">
       <div class="input-box">
         <textarea id="input" placeholder="Écris ton message à INED Buddy..." rows="1"></textarea>
-        <button class="btn-new" id="newChatBtn" onclick="startNewChat()">
+        <button class="send-btn" id="sendBtn" title="Envoyer">
           <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
       </div>
@@ -190,7 +190,7 @@ const SYSTEM_PROMPT = [
 "",
 "PROGRAMME PÉDAGOGIQUE MDO1 - ANNÉE 2025-2026 :",
 "",
-"SEMESTRE 1 (S1) - 2026-2027 :",
+"SEMESTRE 1 (S1) - 2025-2026 :",
 "- Langues I : Langue française I (Mme BENADDOU, Salle A1), Business English I (Mme EL HAG, Salle N24)",
 "- Méthodologie de Travail Universitaire",
 "- Économie et Management : Économie générale, Management des organisations",
@@ -249,7 +249,7 @@ const SYSTEM_PROMPT = [
 "- Reste bienveillant, encourageant et professionnel.",
 "- Pour les questions administratives précises (notes, absences), rappelle de consulter l'espace étudiant ou l'administration.",
 "- Tu peux aider sur : révisions, explications de cours, méthodes de travail, préparation aux examens, conseils pour le stage."
-].join('\\n');
+].join('\n');
 
 const STORAGE_KEY = 'ined_buddy_conversations_v1';
 const THEME_KEY = 'ined_buddy_theme';
@@ -266,7 +266,7 @@ function currentConv(){ return currentId ? getConv(currentId) : null; }
 
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
-  $('themeBtn').textContent = t === 'light' ? '️ Clair' : '🌙 Sombre';
+  $('themeBtn').textContent = t === 'light' ? '☀️ Clair' : '🌙 Sombre';
   localStorage.setItem(THEME_KEY, t);
 }
 applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
@@ -288,20 +288,6 @@ function renderSidebar(){
           else renderSidebar();
           save();
         }
-        // ✅ FONCTION GLOBALE POUR LE BOUTON NOUVELLE CONVERSATION (100% fiable)
-window.startNewChat = function() {
-    console.log('✅ Bouton Nouvelle conversation cliqué !');
-    currentId = null;
-    render();
-    
-    // Fermer la sidebar sur mobile après la création
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    if (sidebar && overlay && window.innerWidth <= 768) {
-        sidebar.classList.add('hidden');
-        overlay.classList.remove('active');
-    }
-};
         return;
       }
       currentId = c.id;
@@ -311,7 +297,6 @@ window.startNewChat = function() {
   });
 }
 
-// Force sidebar hidden on mobile at load
 if (window.innerWidth <= 768) {
   $('sidebar').classList.add('hidden');
   $('overlay').classList.remove('active');
@@ -333,7 +318,6 @@ $('overlay').onclick = () => {
   $('overlay').classList.remove('active');
 };
 
-// Close sidebar when clicking a conversation on mobile
 window.addEventListener('resize', () => {
   if (window.innerWidth > 768) {
     $('sidebar').classList.remove('hidden');
@@ -344,6 +328,19 @@ window.addEventListener('resize', () => {
   }
 });
 
+// ✅ FONCTION GLOBALE POUR LE BOUTON NOUVELLE CONVERSATION
+window.startNewChat = function() {
+  console.log('✅ Bouton Nouvelle conversation cliqué !');
+  currentId = null;
+  render();
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  if (sidebar && overlay && window.innerWidth <= 768) {
+    sidebar.classList.add('hidden');
+    overlay.classList.remove('active');
+  }
+};
+
 function render(){
   renderSidebar();
   const inner = $('chatInner');
@@ -351,7 +348,7 @@ function render(){
   const c = currentConv();
   if(!c){
     $('chatTitle').textContent = 'INED Buddy';
-    inner.innerHTML = `<div class="welcome"><div class="logo"></div><h2>Bonjour et bienvenue à l'INED !</h2><p>Je suis INED Buddy, ton assistant universitaire intelligent. Je t'accompagne dans tes cours MDO 1, tes révisions et ta réussite académique.</p><div class="suggestions"><div class="sugg" data-q="Présente-moi la filière MDO"><div class="t">📘 Présente-moi la filière MDO</div><div class="d">Objectifs, débouchés, département INED</div></div><div class="sugg" data-q="Quels sont les modules du semestre 1 et 2 ?"><div class="t"> Modules S1 & S2</div><div class="d">Programme pédagogique complet</div></div><div class="sugg" data-q="Comment bien réussir ma première année à l'INED ?"><div class="t">🎯 Réussir ma première année</div><div class="d">Conseils d'intégration et méthode</div></div><div class="sugg" data-q="Explique-moi la différence entre comptabilité financière et comptabilité analytique"><div class="t">💡 Une explication claire</div><div class="d">Comptabilité : financière vs analytique</div></div></div></div>`;
+    inner.innerHTML = `<div class="welcome"><div class="logo">🎓</div><h2>Bonjour et bienvenue à l'INED !</h2><p>Je suis INED Buddy, ton assistant universitaire intelligent. Je t'accompagne dans tes cours MDO 1, tes révisions et ta réussite académique.</p><div class="suggestions"><div class="sugg" data-q="Présente-moi la filière MDO"><div class="t">📘 Présente-moi la filière MDO</div><div class="d">Objectifs, débouchés, département INED</div></div><div class="sugg" data-q="Quels sont les modules du semestre 1 et 2 ?"><div class="t">📚 Modules S1 & S2</div><div class="d">Programme pédagogique complet</div></div><div class="sugg" data-q="Comment bien réussir ma première année à l'INED ?"><div class="t">🎯 Réussir ma première année</div><div class="d">Conseils d'intégration et méthode</div></div><div class="sugg" data-q="Explique-moi la différence entre comptabilité financière et comptabilité analytique"><div class="t">💡 Une explication claire</div><div class="d">Comptabilité : financière vs analytique</div></div></div></div>`;
     inner.querySelectorAll('.sugg').forEach(s => s.onclick = () => { $('input').value = s.dataset.q; sendMessage(); });
     return;
   }
@@ -438,6 +435,18 @@ async function sendMessage(){
   await streamResponse(c, bubble);
 }
 
+async function regenerate(){
+  const c = currentConv();
+  if(!c || c.messages.length < 2 || isStreaming) return;
+  if(c.messages[c.messages.length-1].role === 'assistant') c.messages.pop();
+  save();
+  const msgs = document.querySelectorAll('.msg.assistant');
+  if(msgs.length) msgs[msgs.length-1].remove();
+  const bubble = appendMessage('assistant', '');
+  await streamResponse(c, bubble);
+}
+
+// ✅ VERSION NON-STREAM (JSON simple) — la seule qui doit exister
 async function streamResponse(conv, bubble){
   isStreaming = true;
   setStreamingUI(true);
@@ -464,77 +473,13 @@ async function streamResponse(conv, bubble){
     save();
   } catch(e){
     bubble.innerHTML = e.name === 'AbortError'
-      ? `<div style="color:var(--danger)">⚠️ Requête annulée.</div>`
-      : `<div style="color:var(--danger)">⚠️ ${escapeHtml(e.message)}</div>`;
+      ? '<div style="color:var(--danger)">⚠️ Requête annulée.</div>'
+      : '<div style="color:var(--danger)">⚠️ ' + escapeHtml(e.message) + '</div>';
   } finally {
     isStreaming = false;
     abortController = null;
     setStreamingUI(false);
     scrollBottom();
-  }
-}
-
-async function streamResponse(conv, bubble){
-  isStreaming = true;
-  setStreamingUI(true);
-  abortController = new AbortController();
-  let full = '';
-  try{
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ system: SYSTEM_PROMPT, messages: conv.messages }),
-      signal: abortController.signal
-    });
-    if(!res.ok || !res.body){
-      const err = await res.text();
-      throw new Error('Erreur serveur : ' + (err || res.status));
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while(true){
-      const {done, value} = await reader.read();
-      if(done) break;
-      buffer += decoder.decode(value, {stream:true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for(const line of lines){
-        if(!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if(data === '[DONE]') continue;
-        try{
-          const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || '';
-          if(delta){
-            full += delta;
-            bubble.innerHTML = renderMarkdown(full);
-            scrollBottom();
-          }
-        }catch(e){}
-      }
-    }
-    conv.messages.push({ role: 'assistant', content: full });
-    conv.updated = Date.now();
-    if(conv.messages.length <= 2){
-      conv.title = autoTitle(conv.messages[0].content);
-      renderSidebar();
-      $('chatTitle').textContent = conv.title;
-    }
-    save();
-  }catch(e){
-    if(e.name === 'AbortError'){
-      if(full){
-        conv.messages.push({ role: 'assistant', content: full + '\n\n_(réponse interrompue)_' });
-        save();
-      }
-    } else {
-      bubble.innerHTML = `<div style="color:var(--danger)">⚠️ ${escapeHtml(e.message)}</div>`;
-    }
-  } finally {
-    isStreaming = false;
-    abortController = null;
-    setStreamingUI(false);
   }
 }
 
@@ -572,6 +517,20 @@ input.addEventListener('keydown', e => {
   }
 });
 $('sendBtn').onclick = sendMessage;
+
+$('renameBtn').onclick = () => {
+  const c = currentConv();
+  if(!c) return;
+  const newTitle = prompt('Nouveau titre :', c.title);
+  if(newTitle && newTitle.trim()){
+    c.title = newTitle.trim();
+    c.updated = Date.now();
+    save();
+    renderSidebar();
+    $('chatTitle').textContent = c.title;
+  }
+};
+
 render();
 </script>
 </body>
