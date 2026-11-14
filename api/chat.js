@@ -1,7 +1,6 @@
 // api/chat.js — NON-STREAM (Edge, robuste)
 export const runtime = 'edge';
 export const maxDuration = 30;
-
 const H = { 'Content-Type': 'application/json' };
 
 export default async function handler(req) {
@@ -13,7 +12,7 @@ export default async function handler(req) {
   const model   = process.env.LLM_MODEL   || 'llama-3.3-70b-versatile';
 
   if (!apiKey)
-    return new Response(JSON.stringify({ error: 'LLM_API_KEY non configurée (Vercel → Env Variables → Preview + Production)' }), { status: 500, headers: H });
+    return new Response(JSON.stringify({ error: 'LLM_API_KEY non configurée dans Vercel (pas seulement .env local !)' }), { status: 500, headers: H });
 
   let body;
   try { body = await req.json(); }
@@ -29,7 +28,7 @@ export default async function handler(req) {
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        stream: false,                       // ⬅️ ON COUPE LE STREAM
+        stream: false,                      // ⬅️ LE FIX : plus de SSE
         temperature: 0.7,
         max_tokens: 2048,
         messages: [{ role: 'system', content: system || 'Tu es un assistant utile.' }, ...messages],
