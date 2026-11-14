@@ -438,15 +438,40 @@ async function sendMessage(){
   await streamResponse(c, bubble);
 }
 
-async function regenerate(){
-  const c = currentConv();
-  if(!c || c.messages.length < 2 || isStreaming) return;
-  if(c.messages[c.messages.length-1].role === 'assistant') c.messages.pop();
-  save();
-  const msgs = document.querySelectorAll('.msg.assistant');
-  if(msgs.length) msgs[msgs.length-1].remove();
-  const bubble = appendMessage('assistant', '');
-  await streamResponse(c, bubble);
+async function streamResponse(conv, bubble){
+  isStreaming = true;
+  setStreamingUI(true);
+  abortController = new AbortController();
+  try{
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: SYSTEM_PROMPT, messages: conv.messages }),
+      signal: abortController.signal
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('Erreur serveur ' + res.status));
+
+    const full = data.reply || '';
+    bubble.innerHTML = renderMarkdown(full);
+    conv.messages.push({ role: 'assistant', content: full });
+    conv.updated = Date.now();
+    if (conv.messages.length <= 2) {
+      conv.title = autoTitle(conv.messages[0].content);
+      renderSidebar();
+      $('chatTitle').textContent = conv.title;
+    }
+    save();
+  } catch(e){
+    bubble.innerHTML = e.name === 'AbortError'
+      ? `<div style="color:var(--danger)">⚠️ Requête annulée.</div>`
+      : `<div style="color:var(--danger)">⚠️ ${escapeHtml(e.message)}</div>`;
+  } finally {
+    isStreaming = false;
+    abortController = null;
+    setStreamingUI(false);
+    scrollBottom();
+  }
 }
 
 async function streamResponse(conv, bubble){
